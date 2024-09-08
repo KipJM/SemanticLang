@@ -1,0 +1,155 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 600px;
+                 background-color: #222222;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#B7CA30", "font": {"color": "white"}, "id": "Butterflies", "label": "Butterflies", "shape": "dot"}, {"color": "#B7CA30", "font": {"color": "white"}, "id": "Lepidoptera", "label": "Lepidoptera", "shape": "dot"}, {"color": "#B7CA30", "font": {"color": "white"}, "id": "Insecta", "label": "Insecta", "shape": "dot"}, {"color": "#B7CA30", "font": {"color": "white"}, "id": "Rhopalocera", "label": "Rhopalocera", "shape": "dot"}, {"color": "#B7CA30", "font": {"color": "white"}, "id": "Large_wings", "label": "Large_wings", "shape": "dot"}, {"color": "#B7CA30", "font": {"color": "white"}, "id": "Papilionoidea", "label": "Papilionoidea", "shape": "dot"}, {"color": "#B7CA30", "font": {"color": "white"}, "id": "Hedyloidea", "label": "Hedyloidea", "shape": "dot"}, {"color": "#3B7AD8", "font": {"color": "white"}, "id": "Americas", "label": "Americas", "shape": "dot"}, {"color": "#35B56C", "font": {"color": "white"}, "id": "Egg", "label": "Egg", "shape": "dot"}, {"color": "#35B56C", "font": {"color": "white"}, "id": "Holometabola", "label": "Holometabola", "shape": "dot"}, {"color": "#35B56C", "font": {"color": "white"}, "id": "Caterpillar", "label": "Caterpillar", "shape": "dot"}, {"color": "#35B56C", "font": {"color": "white"}, "id": "Paleozoic", "label": "Paleozoic", "shape": "dot"}, {"color": "#35B56C", "font": {"color": "white"}, "id": "Cretaceous_period", "label": "Cretaceous_period", "shape": "dot"}, {"color": "#35B56C", "font": {"color": "white"}, "id": "Winged_insect", "label": "Winged_insect", "shape": "dot"}, {"color": "#5A2842", "font": {"color": "white"}, "id": "Food_plant", "label": "Food_plant", "shape": "dot"}, {"color": "#CA1C28", "font": {"color": "white"}, "id": "Pupation", "label": "Pupation", "shape": "dot"}, {"color": "#CA1C28", "font": {"color": "white"}, "id": "\"rapidly\"", "label": "\"rapidly\"", "shape": "dot"}, {"color": "#CA1C28", "font": {"color": "white"}, "id": "Adult", "label": "Adult", "shape": "dot"}, {"color": "#CA1C28", "font": {"color": "white"}, "id": "Adult_insect", "label": "Adult_insect", "shape": "dot"}, {"color": "#CA1C28", "font": {"color": "white"}, "id": "Wings", "label": "Wings", "shape": "dot"}, {"color": "#CA1C28", "font": {"color": "white"}, "id": "Climbing", "label": "Climbing", "shape": "dot"}, {"color": "#70E520", "font": {"color": "white"}, "id": "Complete_metamorphosis", "label": "Complete_metamorphosis", "shape": "dot"}, {"color": "#EB17B6", "font": {"color": "white"}, "id": "Tropical_rainforest", "label": "Tropical_rainforest", "shape": "dot"}, {"color": "#EB17B6", "font": {"color": "white"}, "id": "\"Several generations in a year, or a single generation, depending on the location\"", "label": "\"Several generations in a year, or a single generation, depending on the location\"", "shape": "dot"}, {"color": "#EB17B6", "font": {"color": "white"}, "id": "\"Several years in cold locations\"", "label": "\"Several years in cold locations\"", "shape": "dot"}, {"color": "#EB17B6", "font": {"color": "white"}, "id": "Aposematism", "label": "Aposematism", "shape": "dot"}, {"color": "#EB17B6", "font": {"color": "white"}, "id": "Mimicry", "label": "Mimicry", "shape": "dot"}, {"color": "#EB17B6", "font": {"color": "white"}, "id": "True", "label": "True", "shape": "dot"}, {"color": "#EB17B6", "font": {"color": "white"}, "id": "None", "label": "None", "shape": "dot"}, {"color": "#2ABFDC", "font": {"color": "white"}, "id": "\"None\"", "label": "\"None\"", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Parasitoid", "label": "Parasitoid", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Wasp", "label": "Wasp", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Flies", "label": "Flies", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Other_invertebrates", "label": "Other_invertebrates", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Protozoan", "label": "Protozoan", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Domestic_crop", "label": "Domestic_crop", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Other_insect", "label": "Other_insect", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Tree", "label": "Tree", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Plant", "label": "Plant", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Crop", "label": "Crop", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Coleoptera", "label": "Coleoptera", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Arthropoda", "label": "Arthropoda", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Diptera", "label": "Diptera", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Hymenoptera", "label": "Hymenoptera", "shape": "dot"}, {"color": "#490781", "font": {"color": "white"}, "id": "Diplura", "label": "Diplura", "shape": "dot"}, {"color": "#491009", "font": {"color": "white"}, "id": "Pollination", "label": "Pollination", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Coleoptera ", "label": "Coleoptera ", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Ant", "label": "Ant", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Hymenoptera ", "label": "Hymenoptera ", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Diplura ", "label": "Diplura ", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Diptera ", "label": "Diptera ", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Lepidoptera ", "label": "Lepidoptera ", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Insecta ", "label": "Insecta ", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Arthropoda ", "label": "Arthropoda ", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Winged_insect ", "label": "Winged_insect ", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Papilionoidea ", "label": "Papilionoidea ", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Rhopalocera ", "label": "Rhopalocera ", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Paleozoic ", "label": "Paleozoic ", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Cretaceous_period ", "label": "Cretaceous_period ", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Holometabola ", "label": "Holometabola ", "shape": "dot"}, {"color": "#EDEA40", "font": {"color": "white"}, "id": "Diptera \u003c", "label": "Diptera \u003c", "shape": "dot"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "color": "#B7CA30", "from": "Butterflies", "title": "order", "to": "Lepidoptera"}, {"arrows": "to", "color": "#B7CA30", "from": "Lepidoptera", "title": "class", "to": "Insecta"}, {"arrows": "to", "color": "#B7CA30", "from": "Butterflies", "title": "order", "to": "Rhopalocera"}, {"arrows": "to", "color": "#B7CA30", "from": "Rhopalocera", "title": "characteristic", "to": "Large_wings"}, {"arrows": "to", "color": "#B7CA30", "from": "Butterflies", "title": "order", "to": "Papilionoidea"}, {"arrows": "to", "color": "#B7CA30", "from": "Butterflies", "title": "class", "to": "Insecta"}, {"arrows": "to", "color": "#B7CA30", "from": "Butterflies", "title": "order", "to": "Hedyloidea"}, {"arrows": "to", "color": "#3B7AD8", "from": "Butterflies", "title": "superfamily", "to": "Papilionoidea"}, {"arrows": "to", "color": "#3B7AD8", "from": "Hedyloidea", "title": "region", "to": "Americas"}, {"arrows": "to", "color": "#35B56C", "from": "Butterflies", "title": "lifeCycleStage", "to": "Egg"}, {"arrows": "to", "color": "#35B56C", "from": "Butterflies", "title": "order", "to": "Holometabola"}, {"arrows": "to", "color": "#35B56C", "from": "Butterflies", "title": "lifeCycleStage", "to": "Caterpillar"}, {"arrows": "to", "color": "#35B56C", "from": "Butterflies", "title": "order", "to": "Paleozoic"}, {"arrows": "to", "color": "#35B56C", "from": "Butterflies", "title": "order", "to": "Cretaceous_period"}, {"arrows": "to", "color": "#35B56C", "from": "Butterflies", "title": "order", "to": "Winged_insect"}, {"arrows": "to", "color": "#5A2842", "from": "Butterflies", "title": "food", "to": "Food_plant"}, {"arrows": "to", "color": "#5A2842", "from": "Butterflies", "title": "adult", "to": "Winged_insect"}, {"arrows": "to", "color": "#5A2842", "from": "Butterflies", "title": "larva", "to": "Caterpillar"}, {"arrows": "to", "color": "#CA1C28", "from": "Caterpillar", "title": "metamorphosis", "to": "Pupation"}, {"arrows": "to", "color": "#CA1C28", "from": "Caterpillar", "title": "development", "to": "\"rapidly\""}, {"arrows": "to", "color": "#CA1C28", "from": "Caterpillar", "title": "stage", "to": "Pupation"}, {"arrows": "to", "color": "#CA1C28", "from": "Caterpillar", "title": "stage", "to": "Adult"}, {"arrows": "to", "color": "#CA1C28", "from": "Adult_insect", "title": "power", "to": "Wings"}, {"arrows": "to", "color": "#CA1C28", "from": "Adult_insect", "title": "power", "to": "Climbing"}, {"arrows": "to", "color": "#70E520", "from": "Caterpillar", "title": "metamorphosis", "to": "Complete_metamorphosis"}, {"arrows": "to", "color": "#EB17B6", "from": "Butterflies", "title": "habitat", "to": "Tropical_rainforest"}, {"arrows": "to", "color": "#EB17B6", "from": "Butterflies", "title": "lifeCycle", "to": "\"Several generations in a year, or a single generation, depending on the location\""}, {"arrows": "to", "color": "#EB17B6", "from": "Butterflies", "title": "lifeCycle", "to": "\"Several years in cold locations\""}, {"arrows": "to", "color": "#EB17B6", "from": "Butterflies", "title": "defenseMechanism", "to": "Aposematism"}, {"arrows": "to", "color": "#EB17B6", "from": "Butterflies", "title": "defenseMechanism", "to": "Mimicry"}, {"arrows": "to", "color": "#EB17B6", "from": "Butterflies", "title": "polymorphism", "to": "True"}, {"arrows": "to", "color": "#EB17B6", "from": "Caterpillar", "title": "metamorphosis", "to": "None"}, {"arrows": "to", "color": "#2ABFDC", "from": "Caterpillar", "title": "metamorphosis", "to": "\"None\""}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "attack", "to": "Parasitoid"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "attack", "to": "Wasp"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "attack", "to": "Flies"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "attack", "to": "Other_invertebrates"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "attack", "to": "Protozoan"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "damage", "to": "Domestic_crop"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "prey", "to": "Other_insect"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "damage", "to": "Tree"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "damage", "to": "Plant"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "damage", "to": "Crop"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "order", "to": "Coleoptera"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "order", "to": "Arthropoda"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "order", "to": "Insecta"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "order", "to": "Diptera"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "order", "to": "Hymenoptera"}, {"arrows": "to", "color": "#490781", "from": "Caterpillar", "title": "order", "to": "Diplura"}, {"arrows": "to", "color": "#491009", "from": "Caterpillar", "title": "damage", "to": "Pollination"}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "order", "to": "Coleoptera "}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "predator", "to": "Ant"}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "order", "to": "Hymenoptera "}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "order", "to": "Diplura "}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "order", "to": "Diptera "}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "order", "to": "Lepidoptera "}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "order", "to": "Insecta "}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "order", "to": "Arthropoda "}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "order", "to": "Winged_insect "}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "order", "to": "Papilionoidea "}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "order", "to": "Rhopalocera "}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "order", "to": "Paleozoic "}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "order", "to": "Cretaceous_period "}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "order", "to": "Holometabola "}, {"arrows": "to", "color": "#EDEA40", "from": "Caterpillar", "title": "order", "to": "Diptera \u003c"}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>
