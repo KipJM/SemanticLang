@@ -1,19 +1,9 @@
-# Logic3 - A hybrid AI model for natural language Q&A
-Logic3 combines the natural language understanding capabilities of transformers with the performance and reliability of RDF(Resource Description Framework).
+# SemanticLang
+_A lightweight Q&A model designed to answer questions about long documents, with traceable deduction and evidence_
 
-## Architecture
-```mermaid
-flowchart
-A[NL Question] --> B(["queryGen (Transformer 1)"]) --> FOL["Semantic relations in RDF"]
-B --> FOQ["RDF query"]
-subgraph RDF ENGINE
-    FOL --> LINK[]
-    FOQ --> LINK
-    
-end
-FOL --> FOO[RDF response] --> D(["responseGen (Transformer 2)"])
-A --> D --> E["Contextualized RDF response"]
-```
+### Special tokens
+- \<unused0>: \<T> (Start of Triple (Subject))
+- \<unused1>: \<R> (Predicate)
+- \<unused2>: \<S> (Object)
 
-## Data
-Logic3 is trained on FOLIO, 
+Yes the naming is weird I'm sorry

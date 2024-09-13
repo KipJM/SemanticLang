@@ -1,6 +1,6 @@
 /.idea/
-/Gemma2/gemma2_2b_context/
-/Gemma2/gemma2_2b_test/
-/Gemma2/gemma_pytorch/
+/GraphGen/graph_2b_context/
+/GraphGen/graph_2b_test/
+/GraphGen/gemma_pytorch/
 /models/
 /data/webnlg/
