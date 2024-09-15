@@ -29,7 +29,7 @@ Based on the context of the question, convert the query result for the question 
     def setup_model(self):
         # setup model helper function
         self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-            model_name=os.path.join(os.path.dirname(__file__),"answer_2b_demo"),
+            model_name=os.path.join(os.path.dirname(__file__),"answer_2b_300step"),
             max_seq_length=2048,
             dtype=None,
             load_in_4bit=True,

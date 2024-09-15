@@ -157,13 +157,14 @@ The user has provided a question. Convert the question in Natural Language to a 
         self.setup_model()
 
     def append_rdfs(self, rdfs:[Triple]):
+        print(rdfs)
         self.t_s_keywords = self.t_s_keywords.union(set([rdf.object for rdf in rdfs] + [rdf.subject for rdf in rdfs]))
         self.r_keywords = self.r_keywords.union(set([rdf.predicate for rdf in rdfs]))
 
     def setup_model(self):
         # setup model helper function
         self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-            model_name=os.path.join(os.path.dirname(__file__),"query_2b_200step"),
+            model_name=os.path.join(os.path.dirname(__file__),"query_2b_600step"),
             max_seq_length=2048,
             dtype=None,
             load_in_4bit=True,
@@ -218,6 +219,7 @@ The user has provided a question. Convert the question in Natural Language to a 
                 # Use cache = false is broken haha, but beam search is broken when not using cache hahahah ;-;
             )
         else:
+            print(self.t_s_keywords, self.r_keywords)
             print("No existing RDFs, reverting to default gen without SPARQLLogits")
             outputs = self.model.generate(
                 **inputs,

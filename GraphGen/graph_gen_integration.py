@@ -218,7 +218,7 @@ Extract the most confident information in the sentence below as much as possible
     def setup_model(self):
         # setup model helper function
         self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-            model_name=os.path.join(os.path.dirname(__file__),"graph_2b_tokenfix"),
+            model_name=os.path.join(os.path.dirname(__file__),"graph_2b_1000step"),
             max_seq_length=2048,
             dtype=None,
             load_in_4bit=True,
