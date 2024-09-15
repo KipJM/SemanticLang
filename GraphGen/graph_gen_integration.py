@@ -152,7 +152,7 @@ class PreferKeywordsLogit(LogitsProcessor):
 
 
 def draw_graph(triples):
-    net = Network(bgcolor="#222222", font_color="white", notebook=False, directed=True)
+    net = Network(bgcolor="#222222", font_color="white", notebook=True, directed=True)
 
     # Parse rdf_strings
 
@@ -178,7 +178,7 @@ def draw_graph(triples):
 
         add_triples(triple, color)
         # net.show(f"{idx}.html", notebook=False)
-    net.show("network.html", notebook=False)
+    net.show("graph2.html", notebook=True)
 
 
 class GraphGen:

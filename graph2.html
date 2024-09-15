@@ -1,0 +1,155 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 600px;
+                 background-color: #222222;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#503F99", "font": {"color": "white"}, "id": "Artificial_intelligence", "label": "Artificial_intelligence", "shape": "dot"}, {"color": "#503F99", "font": {"color": "white"}, "id": "Computer_science", "label": "Computer_science", "shape": "dot"}, {"color": "#503F99", "font": {"color": "white"}, "id": "Machine_learning", "label": "Machine_learning", "shape": "dot"}, {"color": "#503F99", "font": {"color": "white"}, "id": "\"Intelligence exhibited by machines, particularly computer systems\"", "label": "\"Intelligence exhibited by machines, particularly computer systems\"", "shape": "dot"}, {"color": "#503F99", "font": {"color": "white"}, "id": "Perceive_environment", "label": "Perceive_environment", "shape": "dot"}, {"color": "#90A7AF", "font": {"color": "white"}, "id": "\"Advanced web search engines, recommendation systems, interacting via human speech, autonomous vehicles, generative and creative tools, superhuman play and analysis in strategy games\"", "label": "\"Advanced web search engines, recommendation systems, interacting via human speech, autonomous vehicles, generative and creative tools, superhuman play and analysis in strategy games\"", "shape": "dot"}, {"color": "#9B6AEE", "font": {"color": "white"}, "id": "Advanced_web_search_engines", "label": "Advanced_web_search_engines", "shape": "dot"}, {"color": "#9B6AEE", "font": {"color": "white"}, "id": "Google", "label": "Google", "shape": "dot"}, {"color": "#9B6AEE", "font": {"color": "white"}, "id": "\"Search engines\"", "label": "\"Search engines\"", "shape": "dot"}, {"color": "#2D708A", "font": {"color": "white"}, "id": "\"Perceive_environment\"", "label": "\"Perceive_environment\"", "shape": "dot"}, {"color": "#ECD8A8", "font": {"color": "white"}, "id": "2", "label": "2", "shape": "dot"}, {"color": "#3C8A8C", "font": {"color": "white"}, "id": "\"General intelligence\"", "label": "\"General intelligence\"", "shape": "dot"}, {"color": "#CC4698", "font": {"color": "white"}, "id": "Linguistics", "label": "Linguistics", "shape": "dot"}, {"color": "#CC4698", "font": {"color": "white"}, "id": "Philosophy", "label": "Philosophy", "shape": "dot"}, {"color": "#CC4698", "font": {"color": "white"}, "id": "Neuroscience", "label": "Neuroscience", "shape": "dot"}, {"color": "#CC4698", "font": {"color": "white"}, "id": "Mathematics_optimization", "label": "Mathematics_optimization", "shape": "dot"}, {"color": "#CC4698", "font": {"color": "white"}, "id": "Formal_logic", "label": "Formal_logic", "shape": "dot"}, {"color": "#CC4698", "font": {"color": "white"}, "id": "Statistics", "label": "Statistics", "shape": "dot"}, {"color": "#CC4698", "font": {"color": "white"}, "id": "Operations_research", "label": "Operations_research", "shape": "dot"}, {"color": "#CC4698", "font": {"color": "white"}, "id": "Economics", "label": "Economics", "shape": "dot"}, {"color": "#65D2D9", "font": {"color": "white"}, "id": "1956", "label": "1956", "shape": "dot"}, {"color": "#65D2D9", "font": {"color": "white"}, "id": "\"1956, 1966, 1970, 1980, 1990, 2000, 2006, 2012\"", "label": "\"1956, 1966, 1970, 1980, 1990, 2000, 2006, 2012\"", "shape": "dot"}, {"color": "#65D2D9", "font": {"color": "white"}, "id": "\"1958, 1968, 1972, 1984, 2001\"", "label": "\"1958, 1968, 1972, 1984, 2001\"", "shape": "dot"}, {"color": "#65D2D9", "font": {"color": "white"}, "id": "\"Loss of funding\"", "label": "\"Loss of funding\"", "shape": "dot"}, {"color": "#65D2D9", "font": {"color": "white"}, "id": "2012", "label": "2012", "shape": "dot"}, {"color": "#65D2D9", "font": {"color": "white"}, "id": "\"Machine learning\"", "label": "\"Machine learning\"", "shape": "dot"}, {"color": "#50FCCB", "font": {"color": "white"}, "id": "11", "label": "11", "shape": "dot"}, {"color": "#50FCCB", "font": {"color": "white"}, "id": "2017", "label": "2017", "shape": "dot"}, {"color": "#50FCCB", "font": {"color": "white"}, "id": "Transformer_(architecture)", "label": "Transformer_(architecture)", "shape": "dot"}, {"color": "#50FCCB", "font": {"color": "white"}, "id": "\"Hundreds of billions of dollars\"", "label": "\"Hundreds of billions of dollars\"", "shape": "dot"}, {"color": "#50FCCB", "font": {"color": "white"}, "id": "2020", "label": "2020", "shape": "dot"}, {"color": "#E32335", "font": {"color": "white"}, "id": "\"Exponential\" ", "label": "\"Exponential\" ", "shape": "dot"}, {"color": "#B4E460", "font": {"color": "white"}, "id": "21st_century", "label": "21st_century", "shape": "dot"}, {"color": "#503F99", "font": {"color": "white"}, "id": "Sergey_Brin", "label": "Sergey_Brin", "shape": "dot"}, {"color": "#503F99", "font": {"color": "white"}, "id": "Transformer", "label": "Transformer", "shape": "dot"}, {"color": "#503F99", "font": {"color": "white"}, "id": "\"Deep neural network\"", "label": "\"Deep neural network\"", "shape": "dot"}, {"color": "#503F99", "font": {"color": "white"}, "id": "Larry_Page", "label": "Larry_Page", "shape": "dot"}, {"color": "#503F99", "font": {"color": "white"}, "id": "\"Looking up in a word embedding table\"", "label": "\"Looking up in a word embedding table\"", "shape": "dot"}, {"color": "#503F99", "font": {"color": "white"}, "id": "\"Multiple layers of attention\"", "label": "\"Multiple layers of attention\"", "shape": "dot"}, {"color": "#503F99", "font": {"color": "white"}, "id": "\"Transformer\"", "label": "\"Transformer\"", "shape": "dot"}, {"color": "#503F99", "font": {"color": "white"}, "id": "\"Attention is all you need\"", "label": "\"Attention is all you need\"", "shape": "dot"}, {"color": "#503F99", "font": {"color": "white"}, "id": "\"Google\"", "label": "\"Google\"", "shape": "dot"}, {"color": "#90A7AF", "font": {"color": "white"}, "id": "None", "label": "None", "shape": "dot"}, {"color": "#90A7AF", "font": {"color": "white"}, "id": "\"Transformer\" ", "label": "\"Transformer\" ", "shape": "dot"}, {"color": "#90A7AF", "font": {"color": "white"}, "id": "\"Less than 1 day\" ", "label": "\"Less than 1 day\" ", "shape": "dot"}, {"color": "#90A7AF", "font": {"color": "white"}, "id": "\"Recurrent neural network\" ", "label": "\"Recurrent neural network\" ", "shape": "dot"}, {"color": "#2D708A", "font": {"color": "white"}, "id": "\"Machine translation\"", "label": "\"Machine translation\"", "shape": "dot"}, {"color": "#2D708A", "font": {"color": "white"}, "id": "\"Large language model\"", "label": "\"Large language model\"", "shape": "dot"}, {"color": "#2D708A", "font": {"color": "white"}, "id": "Machine_translation", "label": "Machine_translation", "shape": "dot"}, {"color": "#2D708A", "font": {"color": "white"}, "id": "\"Wikipedia and Common Crawl\"", "label": "\"Wikipedia and Common Crawl\"", "shape": "dot"}, {"color": "#ECD8A8", "font": {"color": "white"}, "id": "\"Other transformer\"", "label": "\"Other transformer\"", "shape": "dot"}, {"color": "#3C8A8C", "font": {"color": "white"}, "id": "\"Large-scale natural language processing, computer vision, reinforcement learning, audio, multi-modal processing, robotics, chess, pre-trained systems, generative pre-trained transformers, BERT\"", "label": "\"Large-scale natural language processing, computer vision, reinforcement learning, audio, multi-modal processing, robotics, chess, pre-trained systems, generative pre-trained transformers, BERT\"", "shape": "dot"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "color": "#503F99", "from": "Artificial_intelligence", "title": "field", "to": "Computer_science"}, {"arrows": "to", "color": "#503F99", "from": "Computer_science", "title": "academicDiscipline", "to": "Artificial_intelligence"}, {"arrows": "to", "color": "#503F99", "from": "Artificial_intelligence", "title": "domain", "to": "Machine_learning"}, {"arrows": "to", "color": "#503F99", "from": "Artificial_intelligence", "title": "narrowDefinition", "to": "\"Intelligence exhibited by machines, particularly computer systems\""}, {"arrows": "to", "color": "#503F99", "from": "Artificial_intelligence", "title": "action", "to": "Perceive_environment"}, {"arrows": "to", "color": "#5ADE8A", "from": "Artificial_intelligence", "title": "method", "to": "Machine_learning"}, {"arrows": "to", "color": "#90A7AF", "from": "Artificial_intelligence", "title": "application", "to": "\"Advanced web search engines, recommendation systems, interacting via human speech, autonomous vehicles, generative and creative tools, superhuman play and analysis in strategy games\""}, {"arrows": "to", "color": "#9B6AEE", "from": "Advanced_web_search_engines", "title": "operator", "to": "Google"}, {"arrows": "to", "color": "#9B6AEE", "from": "Advanced_web_search_engines", "title": "product", "to": "\"Search engines\""}, {"arrows": "to", "color": "#9B6AEE", "from": "Artificial_intelligence", "title": "associatedWith", "to": "\"Advanced web search engines, recommendation systems, interacting via human speech, autonomous vehicles, generative and creative tools, superhuman play and analysis in strategy games\""}, {"arrows": "to", "color": "#2D708A", "from": "Artificial_intelligence", "title": "subField", "to": "\"Perceive_environment\""}, {"arrows": "to", "color": "#ECD8A8", "from": "Artificial_intelligence", "title": "numberOfSubfields", "to": "2"}, {"arrows": "to", "color": "#3C8A8C", "from": "Artificial_intelligence", "title": "goal", "to": "\"General intelligence\""}, {"arrows": "to", "color": "#3CF417", "from": "Artificial_intelligence", "title": "longTermGoal", "to": "\"General intelligence\""}, {"arrows": "to", "color": "#CC4698", "from": "Artificial_intelligence", "title": "academicDiscipline", "to": "Linguistics"}, {"arrows": "to", "color": "#CC4698", "from": "Artificial_intelligence", "title": "academicDiscipline", "to": "Philosophy"}, {"arrows": "to", "color": "#CC4698", "from": "Artificial_intelligence", "title": "academicDiscipline", "to": "Neuroscience"}, {"arrows": "to", "color": "#CC4698", "from": "Artificial_intelligence", "title": "method", "to": "Mathematics_optimization"}, {"arrows": "to", "color": "#CC4698", "from": "Artificial_intelligence", "title": "method", "to": "Formal_logic"}, {"arrows": "to", "color": "#CC4698", "from": "Artificial_intelligence", "title": "method", "to": "Statistics"}, {"arrows": "to", "color": "#CC4698", "from": "Artificial_intelligence", "title": "method", "to": "Operations_research"}, {"arrows": "to", "color": "#CC4698", "from": "Artificial_intelligence", "title": "method", "to": "Economics"}, {"arrows": "to", "color": "#65D2D9", "from": "Artificial_intelligence", "title": "foundingDate", "to": "1956"}, {"arrows": "to", "color": "#65D2D9", "from": "Artificial_intelligence", "title": "cycleOfOptimism", "to": "\"1956, 1966, 1970, 1980, 1990, 2000, 2006, 2012\""}, {"arrows": "to", "color": "#65D2D9", "from": "Artificial_intelligence", "title": "cycleOfDisappointment", "to": "\"1958, 1968, 1972, 1984, 2001\""}, {"arrows": "to", "color": "#65D2D9", "from": "Artificial_intelligence", "title": "state", "to": "\"Loss of funding\""}, {"arrows": "to", "color": "#65D2D9", "from": "Artificial_intelligence", "title": "yearOfInterest", "to": "2012"}, {"arrows": "to", "color": "#65D2D9", "from": "Artificial_intelligence", "title": "relatedMean", "to": "\"Machine learning\""}, {"arrows": "to", "color": "#A4CE29", "from": "Artificial_intelligence", "title": "funding", "to": "2012"}, {"arrows": "to", "color": "#50FCCB", "from": "Artificial_intelligence", "title": "numberOfSubfields", "to": "11"}, {"arrows": "to", "color": "#50FCCB", "from": "Artificial_intelligence", "title": "birthYear", "to": "2017"}, {"arrows": "to", "color": "#50FCCB", "from": "Artificial_intelligence", "title": "architecture", "to": "Transformer_(architecture)"}, {"arrows": "to", "color": "#50FCCB", "from": "Artificial_intelligence", "title": "investment", "to": "\"Hundreds of billions of dollars\""}, {"arrows": "to", "color": "#50FCCB", "from": "Artificial_intelligence", "title": "birthYear", "to": "2020"}, {"arrows": "to", "color": "#E32335", "from": "Artificial_intelligence", "title": "growthRate", "to": "\"Exponential\" "}, {"arrows": "to", "color": "#B4E460", "from": "Artificial_intelligence", "title": "decade", "to": "21st_century"}, {"arrows": "to", "color": "#503F99", "from": "Google", "title": "keyPerson", "to": "Sergey_Brin"}, {"arrows": "to", "color": "#503F99", "from": "Transformer", "title": "architecture", "to": "\"Deep neural network\""}, {"arrows": "to", "color": "#503F99", "from": "Transformer", "title": "developer", "to": "Google"}, {"arrows": "to", "color": "#503F99", "from": "Google", "title": "foundedBy", "to": "Larry_Page"}, {"arrows": "to", "color": "#503F99", "from": "Transformer", "title": "inputPreprocessing", "to": "\"Looking up in a word embedding table\""}, {"arrows": "to", "color": "#503F99", "from": "Transformer", "title": "layerCount", "to": "\"Multiple layers of attention\""}, {"arrows": "to", "color": "#503F99", "from": "Transformer", "title": "architecture", "to": "\"Transformer\""}, {"arrows": "to", "color": "#503F99", "from": "Transformer", "title": "paperTitle", "to": "\"Attention is all you need\""}, {"arrows": "to", "color": "#503F99", "from": "Transformer", "title": "paperAuthor", "to": "\"Google\""}, {"arrows": "to", "color": "#90A7AF", "from": "Transformer", "title": "recurrentUnit", "to": "None"}, {"arrows": "to", "color": "#90A7AF", "from": "Transformer", "title": "architecture", "to": "\"Transformer\" "}, {"arrows": "to", "color": "#90A7AF", "from": "Transformer", "title": "trainingTime", "to": "\"Less than 1 day\" "}, {"arrows": "to", "color": "#90A7AF", "from": "Transformer", "title": "architecture", "to": "\"Recurrent neural network\" "}, {"arrows": "to", "color": "#90A7AF", "from": "Transformer", "title": "architecture", "to": "\"Attention is all you need\""}, {"arrows": "to", "color": "#2D708A", "from": "Transformer", "title": "laterVariation", "to": "\"Machine translation\""}, {"arrows": "to", "color": "#2D708A", "from": "Transformer", "title": "laterVariation", "to": "\"Large language model\""}, {"arrows": "to", "color": "#2D708A", "from": "Transformer", "title": "application", "to": "Machine_translation"}, {"arrows": "to", "color": "#2D708A", "from": "Transformer", "title": "dataset", "to": "\"Wikipedia and Common Crawl\""}, {"arrows": "to", "color": "#ECD8A8", "from": "Transformer", "title": "predecessor", "to": "\"Other transformer\""}, {"arrows": "to", "color": "#3C8A8C", "from": "Transformer", "title": "field", "to": "\"Large-scale natural language processing, computer vision, reinforcement learning, audio, multi-modal processing, robotics, chess, pre-trained systems, generative pre-trained transformers, BERT\""}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>
