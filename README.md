@@ -1,3 +1,5 @@
+![SemanticLangBanner](https://res.cloudinary.com/dn3o5dlna/image/upload/v1726419733/banners/SemanticLangPoster.png)
+_Designed by me :3 (This image's not CC btw)_
 # SemanticLang
 _A lightweight Q&A model designed to answer questions about long documents, with traceable deduction and evidence_
 
