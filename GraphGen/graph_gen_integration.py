@@ -245,21 +245,7 @@ Extract the most confident information in the sentence below as much as possible
 
 
     def generate(self, input_text):
-        # Chunk splitting
-        sentences = self.pkt_tokenizer.tokenize(input_text)
-
-        merged_sentences = []
-
-        for i in range(len(sentences)):
-            sentence = sentences[i]
-            if len(sentence) <= 0:
-                continue
-            if i >= 1 and len(merged_sentences[-1]) + len(sentence) <= self.max_chunk_length:
-                merged_sentences[-1] += " " + sentence
-            else:
-                if i >= 1:
-                    merged_sentences.append(sentences[i - 1])
-                merged_sentences.append(sentence)
+        merged_sentences = self.split_chunks(input_text)
 
         # Triples gen
         triples = []
@@ -272,6 +258,22 @@ Extract the most confident information in the sentence below as much as possible
             # print(triples)
 
         return triples
+
+    def split_chunks(self, input_text):
+        # Chunk splitting
+        sentences = self.pkt_tokenizer.tokenize(input_text)
+        merged_sentences = []
+        for i in range(len(sentences)):
+            sentence = sentences[i]
+            if len(sentence) <= 0:
+                continue
+            if i >= 1 and len(merged_sentences[-1]) + len(sentence) <= self.max_chunk_length:
+                merged_sentences[-1] += " " + sentence
+            else:
+                if i >= 1:
+                    merged_sentences.append(sentences[i - 1])
+                merged_sentences.append(sentence)
+        return merged_sentences
 
     def generate_rdf(self, context: list[Triple], text: str, _id: int) -> list[Triple]:
         # context pre-processing
