@@ -20,6 +20,8 @@ def disable_tokens(scores, banned_tokens):
 def reward_signed_tokens(scores, rewarded_tokens, reward):
     reward_add = reward - 1
     for token in rewarded_tokens:
+        if scores[0][token] <= -math.inf:
+            continue
         scores[0][token] += reward_add * abs(scores[0][token])
     return scores
 
@@ -28,6 +30,15 @@ def find_largest_index(lst: list, value):
         return len(lst) - 1 - lst[::-1].index(value)
     except:
         return -1  # not found
+
+def get_probable_tokens_in_tree(tree: dict[int], existing_tokens: list[int]):
+    current_depth = tree
+    for existing_token in existing_tokens:
+        if existing_token in current_depth:
+            current_depth = current_depth[existing_token]
+        else:
+            return []
+    return current_depth.keys()
 
 
 @dataclass
@@ -54,6 +65,11 @@ class TRSLogits(LogitsProcessor):
         self.s_token = _tokenizer("<unused2>")['input_ids'][1]  # <S>
 
         self.eos_token = _tokenizer("<eos>")['input_ids'][1]  # <EOS>
+
+        # other banned tokens
+        self.pad_token = _tokenizer("<pad>")['input_ids'][1]  # <pad>
+        self.sot_token = _tokenizer("<start_of_turn>")['input_ids'][1]  # <start_of_turn> for assistant
+        self.eot_token = _tokenizer("<end_of_turn>")['input_ids'][1]  # <end_of_turn> for assistant
 
         # self.response_template_token = _tokenizer(response_template)['input_ids'][1]
 
@@ -90,17 +106,21 @@ class TRSLogits(LogitsProcessor):
             print("jjifdoasjddio not supposed to happen arghh!")
             raise Exception
 
+        banned_tokens += [self.pad_token, self.sot_token, self.eot_token]
+
         disabled_scores = disable_tokens(scores, banned_tokens)
         # print(input_ids)
         # print(f"{scores} -> {disabled_scores}")
         return disabled_scores
 
 
-class PreferKeywordsLogit(LogitsProcessor):
-    t_s_keywords = [] # Subject/Object keywords
-    r_keywords = [] # Predicate keywords
 
-    def __init__(self, _tokenizer, reward, t_s_keywords, r_keywords): # incase cross-document context
+class PreferKeywordsLogit(LogitsProcessor):
+
+    t_s_tree = {} # Subject/Object keywords
+    r_tree = {} # Predicate keywords
+
+    def __init__(self, _tokenizer, reward, t_s_tree, r_tree): # incase cross-document context
         self.tokenizer = _tokenizer
         self.t_token = _tokenizer("<unused0>")['input_ids'][1]  # <T>
         self.r_token = _tokenizer("<unused1>")['input_ids'][1]  # <R>
@@ -108,18 +128,8 @@ class PreferKeywordsLogit(LogitsProcessor):
 
         self.reward = reward
 
-        self.add_keywords(t_s_keywords, r_keywords)
-
-
-    def add_keywords(self, t_s_keywords, r_keywords):
-        if len(t_s_keywords) > 0:
-            # print(t_s_keywords)
-            t_s_unflattened = self.tokenizer(list(t_s_keywords))['input_ids']
-            self.t_s_keywords = list(set(x for xs in t_s_unflattened for x in xs))
-        if len(r_keywords) > 0:
-            # print(r_keywords)
-            r_unflattened = self.tokenizer(list(r_keywords))['input_ids']
-            self.r_keywords = list(set(x for xs in r_unflattened for x in xs))
+        self.t_s_tree = t_s_tree
+        self.r_tree = r_tree
 
 
     def __call__(self, input_ids, scores) -> torch.FloatTensor:
@@ -134,13 +144,19 @@ class PreferKeywordsLogit(LogitsProcessor):
         near_pos = max(t_near_pos, r_near_pos, s_near_pos)
 
 
+        # Example: <T>New_York<R>City_Of<S>United_States_of_
+        #                                  ^^^^^^^^^^^^^^^^^
+        generated = ids_list[(near_pos+1):] # All currently generated keywords
+
+
         if near_pos == t_near_pos or near_pos == s_near_pos:
-            # T/S - setup
-            rewarded_tokens = self.t_s_keywords
+            # T/S
+            rewarded_tokens = get_probable_tokens_in_tree(self.t_s_tree, generated)
+
         elif near_pos == r_near_pos:
-            # R - setup
-            rewarded_tokens = []
-            # rewarded_tokens = self.r_keywords
+            # R
+            rewarded_tokens = get_probable_tokens_in_tree(self.r_tree, generated)
+
         else:
             print("jjifdoasjddio not supposed to happen arghh!")
             raise Exception
@@ -195,8 +211,9 @@ Extract the most confident information in the sentence below as much as possible
 
     def __init__(self, existing_rdfs, document_id = 0, max_chunk_size=400, keyword_reward = 1.05):
         # init tokenizer, models, etc.
-        self.t_s_keywords = set()
-        self.r_keywords = set()
+        self.ts_tree = {} # Autocomplete for AI kinda
+        self.r_tree = {}
+
         self.model = None
         self.tokenizer = None
         self.pkt_tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
@@ -206,14 +223,71 @@ Extract the most confident information in the sentence below as much as possible
 
         self.document_id = document_id
 
+        self.setup_model()
+
         if existing_rdfs is not None and len(existing_rdfs) > 0:
             self.append_rdfs(existing_rdfs)
 
-        self.setup_model()
-
     def append_rdfs(self, rdfs:[Triple]):
-        self.t_s_keywords = self.t_s_keywords.union(set([rdf.object for rdf in rdfs] + [rdf.subject for rdf in rdfs]))
-        self.r_keywords = self.r_keywords.union(set([rdf.predicate for rdf in rdfs]))
+
+        # Tokenize everything
+        new_ts_tokens = [
+            self.tokenizer(keyword)['input_ids'][1:] # First token is <bos>, removed
+            for keyword in set(
+                [rdf.object for rdf in rdfs] + [rdf.subject for rdf in rdfs]
+            )]
+
+        new_r_tokens = [
+            self.tokenizer(keyword)['input_ids'][1:] # First token is <bos>, removed
+            for keyword in set(
+                [rdf.predicate for rdf in rdfs]
+            )]
+
+        # ts map
+        ts_end_tokens = self.tokenizer("<unused1><unused0><eos>")['input_ids'][1:]
+
+        for tokens in new_ts_tokens:
+            tokens.extend(ts_end_tokens)
+
+            current_depth = self.ts_tree
+
+            for token in tokens:
+                if token not in current_depth: # token doesn't exist, create
+                    current_depth[token] = {}
+
+                current_depth = current_depth[token]
+
+        # r map
+        r_end_tokens = self.tokenizer("<unused2>")['input_ids'][1:]
+
+        for tokens in new_r_tokens:
+            tokens.extend(r_end_tokens)
+
+            current_depth = self.r_tree
+
+            for token in tokens:
+                if token not in current_depth:  # token doesn't exist, create
+                    current_depth[token] = {}
+
+                current_depth = current_depth[token]
+
+        # TODO: DEBUG
+        if True:
+            def get_all_keys(d):
+                for key, value in d.items():
+                    yield key
+                    if isinstance(value, dict):
+                        yield from get_all_keys(value)
+
+            print("TS-------------")
+            for x in get_all_keys(self.ts_tree):
+                print(self.tokenizer.decode(x))
+
+            print("R--------------")
+            for x in get_all_keys(self.r_tree):
+                print(self.tokenizer.decode(x))
+
+
 
     def setup_model(self):
         # setup model helper function
@@ -236,8 +310,8 @@ Extract the most confident information in the sentence below as much as possible
         torch.cuda.empty_cache()
 
     def reset_model(self, existing_rdfs, document_id):
-        self.t_s_keywords = set()
-        self.r_keywords = set()
+        self.ts_tree = {}
+        self.r_tree = {}
         self.document_id = document_id
 
         if existing_rdfs is not None and len(existing_rdfs) > 0:
@@ -245,6 +319,7 @@ Extract the most confident information in the sentence below as much as possible
 
 
     def generate(self, input_text):
+        input_text = self.preprocess_document(input_text)
         merged_sentences = self.split_chunks(input_text)
 
         # Triples gen
@@ -259,7 +334,10 @@ Extract the most confident information in the sentence below as much as possible
 
         return triples
 
-    def split_chunks(self, input_text):
+    def preprocess_document(self, input_text:str):
+        return re.sub(r'\n\s*\n', '\n\n', input_text)
+
+    def split_chunks(self, input_text:str):
         # Chunk splitting
         sentences = self.pkt_tokenizer.tokenize(input_text)
         merged_sentences = []
@@ -274,6 +352,7 @@ Extract the most confident information in the sentence below as much as possible
                     merged_sentences.append(sentences[i - 1])
                 merged_sentences.append(sentence)
         return merged_sentences
+
 
     def generate_rdf(self, context: list[Triple], text: str, _id: int) -> list[Triple]:
         # context pre-processing
@@ -290,12 +369,13 @@ Extract the most confident information in the sentence below as much as possible
                     "",  # output - leave this blank for generation!
                 )
             ], return_tensors="pt").to("cuda")
-        print(f"Processing \"{text[:50]}...{text[-10:]}\"")
-        print(self.prompt.format(
-                    context_str,
-                    text,  # input
-                    "",  # output - leave this blank for generation!
-                ))
+        print(f"Phase 1 texchnk \"{text[:50]}...{text[-10:]}\"")
+        print(f"Phase 1 context \"{context_str[:50]}...{context_str[-10:]}\"")
+        # print(self.prompt.format(
+        #             context_str,
+        #             text,  # input
+        #             "",  # output - leave this blank for generation!
+        #         ))
         print("---")
 
         outputs = self.model.generate(
@@ -304,7 +384,7 @@ Extract the most confident information in the sentence below as much as possible
             # temperature = 0.9,
             # max_new_tokens = max(len(text) + 100, 700),
 
-            logits_processor=LogitsProcessorList([TRSLogits(self.tokenizer), PreferKeywordsLogit(self.tokenizer, self.keyword_reward, self.t_s_keywords, self.r_keywords)]),
+            logits_processor=LogitsProcessorList([TRSLogits(self.tokenizer), PreferKeywordsLogit(self.tokenizer, self.keyword_reward, self.ts_tree, self.r_tree)]),
             # num_beams = 3,
             # early_stopping = True,
             repetition_penalty=1.05,
@@ -319,12 +399,12 @@ Extract the most confident information in the sentence below as much as possible
         response = response[0].replace('\n', '')
         rdf_string = response.split("### Response:")[1]
 
-        print(f"Done!")
+        print(f"Phase 2 modl out")
         # print(rdf_string)
         # convert rdf string to list
         rdfs = []
         rdf_string = rdf_string.removeprefix("<bos>").removesuffix("<eos>")
-        print(rdf_string)
+        # print(rdf_string)
         for _triple in rdf_string.split("<unused0>"):
             print(_triple)
             try:
@@ -343,6 +423,9 @@ Extract the most confident information in the sentence below as much as possible
             except Exception as e:
                 print(f"NON-STANDARD TRIPLE {_triple} ({e})")
                 continue
-        print("DONE")
+        print("Phase 3 pars done")
+        print("chunk DONE")
 
         return rdfs
+
+
