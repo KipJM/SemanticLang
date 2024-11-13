@@ -6,7 +6,8 @@ from transformers import LogitsProcessorList, LogitsProcessor
 from unsloth import FastLanguageModel
 from collections import Counter
 
-from GraphGen.graph_gen_integration import Triple
+from GraphGen.graph_gen_integration import Triple, get_probable_tokens_in_tree
+
 
 def disable_tokens(scores, banned_tokens):
     for token in banned_tokens:
@@ -32,44 +33,39 @@ def get_triple_index(ids: list, sep_token_idx, keyword_end_token, var_token):
 
 # Enforce structure, keywords
 class SPARQLLogits(LogitsProcessor):
-    t_s_keywords = [] # Subject/Object keywords
-    r_keywords = [] # Predicate keywords
 
-    def __init__(self, _tokenizer, t_s_keywords, r_keywords):
+    t_s_tree = {} # Subject/Object keywords
+    r_tree = {} # Predicate keywords
+
+    def __init__(self, _tokenizer, t_s_tree, r_tree):
         self.tokenizer = _tokenizer
 
-        self.query_start_token = _tokenizer("{")['input_ids'][1]  # { ...
-        self.query_end_token = _tokenizer("}")['input_ids'][1]  # }<eos>
-        self.eos_token = _tokenizer("<eos>")['input_ids'][1]  # <EOS>
+        self.query_start_token = _tokenizer("{")['input_ids'][1]   # { ...
+        self.query_end_token = _tokenizer("}")['input_ids'][1]     # }<eos>
+        self.eos_token = _tokenizer("<eos>")['input_ids'][1]       # }<eos>
 
-        self.variable_token = _tokenizer('?')['input_ids'][1]  # ?uri
+        self.variable_token = _tokenizer('?')['input_ids'][1]      # ?uri
         self.keyword_start_token = _tokenizer('<')['input_ids'][1] # <subject...
-        self.keyword_end_token = _tokenizer('>')['input_ids'][1] # ...subject>
+        self.keyword_end_token = _tokenizer('>')['input_ids'][1]   # ...subject>
 
-        self.seperator_token = _tokenizer('.')['input_ids'][1] # ...<object> . ?uri...
+        self.seperator_token = _tokenizer('.')['input_ids'][1]     # ...<object> . ?uri...
 
-        self.add_keywords(t_s_keywords, r_keywords)
+        self.t_s_tree = t_s_tree
+        self.r_tree = r_tree
 
-    def add_keywords(self, t_s_keywords, r_keywords):
-        if len(t_s_keywords) > 0:
-            # print(t_s_keywords)
-            t_s_unflattened = self.tokenizer(list(t_s_keywords))['input_ids']
-            self.t_s_keywords = list(set(x for xs in t_s_unflattened for x in xs))
-        if len(r_keywords) > 0:
-            # print(r_keywords)
-            r_unflattened = self.tokenizer(list(r_keywords))['input_ids']
-            self.r_keywords = list(set(x for xs in r_unflattened for x in xs))
 
     def __call__(self, input_ids, scores) -> torch.FloatTensor:
         # get the closest token of interest
         ids_list = input_ids.tolist()[0]
         # print(ids_list)
 
+        # ... }
         if find_largest_index(ids_list, self.query_end_token) != -1:
             # end
             allowed_tokens = [self.eos_token]
             return only_allow_tokens(scores, allowed_tokens)
 
+        # SELECT ... {
         if find_largest_index(ids_list, self.query_start_token) == -1:
             # not started yet
             return scores
@@ -96,12 +92,19 @@ class SPARQLLogits(LogitsProcessor):
             else:
                 disabled_tokens += [self.keyword_end_token, self.seperator_token, self.query_end_token] # content, <, ? allowed
 
+
         elif near_pos == key_start_near_pos: # <
-            allowed_tokens += [self.keyword_end_token]
+
+            generated = ids_list[(near_pos + 1):]  # All currently generated keywords
+
+            # allowed_tokens += [self.keyword_end_token] # In tree now
             if triple_index == 0 or triple_index == 2:
-                allowed_tokens += self.t_s_keywords
+                # TS
+                allowed_tokens += get_probable_tokens_in_tree(self.t_s_tree, generated)
+
             else:
-                allowed_tokens += self.r_keywords
+                # R
+                allowed_tokens += get_probable_tokens_in_tree(self.r_tree, generated)
 
         elif near_pos == key_end_near_pos: # >
             allowed_tokens += [self.seperator_token, self.query_end_token]
@@ -146,20 +149,76 @@ The user has provided a question. Convert the question in Natural Language to a 
 
     def __init__(self, existing_rdfs: list[Triple]): # Keyword is enforced
         # init tokenizer, models, etc.
-        self.t_s_keywords = set()
-        self.r_keywords = set()
+        self.ts_tree = {}
+        self.r_tree = {}
+
         self.model = None
         self.tokenizer = None
+
+        self.setup_model()
 
         if existing_rdfs is not None and len(existing_rdfs) > 0:
             self.append_rdfs(existing_rdfs)
 
-        self.setup_model()
-
     def append_rdfs(self, rdfs:[Triple]):
-        print(rdfs)
-        self.t_s_keywords = self.t_s_keywords.union(set([rdf.object for rdf in rdfs] + [rdf.subject for rdf in rdfs]))
-        self.r_keywords = self.r_keywords.union(set([rdf.predicate for rdf in rdfs]))
+        # Tokenize everything
+        new_ts_tokens = [
+            self.tokenizer(keyword)['input_ids'][1:]  # First token is <bos>, removed
+            for keyword in set(
+                [rdf.object for rdf in rdfs] + [rdf.subject for rdf in rdfs]
+            )]
+
+        new_r_tokens = [
+            self.tokenizer(keyword)['input_ids'][1:]  # First token is <bos>, removed
+            for keyword in set(
+                [rdf.predicate for rdf in rdfs]
+            )]
+
+        # ts map
+        ts_end_tokens = self.tokenizer(">")['input_ids'][1:]
+
+        for tokens in new_ts_tokens:
+            tokens += ts_end_tokens
+            # print(tokens)
+
+            current_depth = self.ts_tree
+
+            for token in tokens:
+                if token not in current_depth:  # token doesn't exist, create
+                    current_depth[token] = {}
+
+                current_depth = current_depth[token]
+
+        # r map
+        r_end_tokens = self.tokenizer(">")['input_ids'][1:]
+
+        for tokens in new_r_tokens:
+            tokens += r_end_tokens
+
+            current_depth = self.r_tree
+
+            for token in tokens:
+                if token not in current_depth:  # token doesn't exist, create
+                    current_depth[token] = {}
+
+                current_depth = current_depth[token]
+
+        # DEBUG
+        if False:
+            def get_all_keys(d, tab):
+                for key, value in d.items():
+                    yield key, tab
+                    if isinstance(value, dict):
+                        yield from get_all_keys(value, tab + "  ")
+
+            print("TS-------------")
+            for x, tab in get_all_keys(self.ts_tree, ""):
+                print(tab + self.tokenizer.decode(x))
+
+            print("R--------------")
+            for x, tab in get_all_keys(self.r_tree, ""):
+                print(tab + self.tokenizer.decode(x))
+
 
     def setup_model(self):
         # setup model helper function
@@ -182,8 +241,8 @@ The user has provided a question. Convert the question in Natural Language to a 
         torch.cuda.empty_cache()
 
     def reset_model(self, existing_rdfs):
-        self.t_s_keywords = set()
-        self.r_keywords = set()
+        self.ts_tree = {}
+        self.r_tree = {}
 
         if existing_rdfs is not None and len(existing_rdfs) > 0:
             self.append_rdfs(existing_rdfs)
@@ -201,7 +260,7 @@ The user has provided a question. Convert the question in Natural Language to a 
                 )
             ], return_tensors="pt").to("cuda")
 
-        if len(self.t_s_keywords) > 0 and len(self.r_keywords) > 0:
+        if len(self.ts_tree) > 0 and len(self.r_tree) > 0:
             outputs = self.model.generate(
                 **inputs,
 
@@ -209,7 +268,7 @@ The user has provided a question. Convert the question in Natural Language to a 
                 # max_new_tokens = max(len(text) + 100, 700),
 
                 logits_processor=LogitsProcessorList(
-                    [SPARQLLogits(self.tokenizer, self.t_s_keywords, self.r_keywords)]),
+                    [SPARQLLogits(self.tokenizer, self.ts_tree, self.r_tree)]),
                 # num_beams = 3,
                 # early_stopping = True,
                 repetition_penalty=1.05,
@@ -219,7 +278,7 @@ The user has provided a question. Convert the question in Natural Language to a 
                 # Use cache = false is broken haha, but beam search is broken when not using cache hahahah ;-;
             )
         else:
-            print(self.t_s_keywords, self.r_keywords)
+            print(self.ts_tree, self.r_tree)
             print("No existing RDFs, reverting to default gen without SPARQLLogits")
             outputs = self.model.generate(
                 **inputs,
