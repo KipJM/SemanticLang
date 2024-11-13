@@ -12,12 +12,12 @@ from pyvis.network import Network
 
 # modified from the notebook to allow seamless Q&A application. It added keyword preference compared to the notebook.
 
-def disable_tokens(scores, banned_tokens):
+def disable_tokens(scores, banned_tokens: list[int]):
     for token in banned_tokens:
         scores[0][token] = -math.inf
     return scores
 
-def reward_signed_tokens(scores, rewarded_tokens, reward):
+def reward_signed_tokens(scores, rewarded_tokens: list[int], reward: float):
     reward_add = reward - 1
     for token in rewarded_tokens:
         if scores[0][token] <= -math.inf:
@@ -25,20 +25,20 @@ def reward_signed_tokens(scores, rewarded_tokens, reward):
         scores[0][token] += reward_add * abs(scores[0][token])
     return scores
 
-def find_largest_index(lst: list, value):
+def find_largest_index(lst: list, value) -> int:
     try:
         return len(lst) - 1 - lst[::-1].index(value)
     except:
         return -1  # not found
 
-def get_probable_tokens_in_tree(tree: dict[int], existing_tokens: list[int]):
+def get_probable_tokens_in_tree(tree: dict[int], existing_tokens: list[int]) -> list[int]:
     current_depth = tree
     for existing_token in existing_tokens:
         if existing_token in current_depth:
             current_depth = current_depth[existing_token]
         else:
             return []
-    return current_depth.keys()
+    return list(current_depth.keys())
 
 
 @dataclass
@@ -54,6 +54,7 @@ class Triple:
 
     def __str__(self):
         return f"<unused0>{self.subject}<unused1>{self.predicate}<unused2>{self.object}"
+
 
 
 # Enforces <T><R><S> Structure
@@ -106,8 +107,9 @@ class TRSLogits(LogitsProcessor):
             print("jjifdoasjddio not supposed to happen arghh!")
             raise Exception
 
-        banned_tokens.append([self.pad_token, self.sot_token, self.eot_token])
+        banned_tokens += [self.pad_token, self.sot_token, self.eot_token]
 
+        # print(f"B {banned_tokens}")
         disabled_scores = disable_tokens(scores, banned_tokens)
         # print(input_ids)
         # print(f"{scores} -> {disabled_scores}")
@@ -115,6 +117,7 @@ class TRSLogits(LogitsProcessor):
 
 
 
+# Tree-based autocomplete thingy
 class PreferKeywordsLogit(LogitsProcessor):
 
     t_s_tree = {} # Subject/Object keywords
@@ -152,6 +155,9 @@ class PreferKeywordsLogit(LogitsProcessor):
         if near_pos == t_near_pos or near_pos == s_near_pos:
             # T/S
             rewarded_tokens = get_probable_tokens_in_tree(self.t_s_tree, generated)
+            # print(f"[G] {self.tokenizer.decode(generated)}...")
+            # print(rewarded_tokens)
+            # print(f"[C] {self.tokenizer.decode(rewarded_tokens)}")
 
         elif near_pos == r_near_pos:
             # R
@@ -165,6 +171,7 @@ class PreferKeywordsLogit(LogitsProcessor):
         # print(input_ids)
         # print(f"{scores} -> {disabled_scores}")
         return reward_scores
+
 
 
 def draw_graph(triples):
@@ -195,6 +202,7 @@ def draw_graph(triples):
         add_triples(triple, color)
         # net.show(f"{idx}.html", notebook=False)
     net.show("graph2.html", notebook=True)
+
 
 
 class GraphGen:
@@ -247,7 +255,8 @@ Extract as much information from the Input as possible, and express the relation
         ts_end_tokens = self.tokenizer("<unused1><unused0><eos>")['input_ids'][1:]
 
         for tokens in new_ts_tokens:
-            tokens.extend(ts_end_tokens)
+            tokens += ts_end_tokens
+            # print(tokens)
 
             current_depth = self.ts_tree
 
@@ -261,7 +270,7 @@ Extract as much information from the Input as possible, and express the relation
         r_end_tokens = self.tokenizer("<unused2>")['input_ids'][1:]
 
         for tokens in new_r_tokens:
-            tokens.extend(r_end_tokens)
+            tokens += r_end_tokens
 
             current_depth = self.r_tree
 
@@ -271,21 +280,21 @@ Extract as much information from the Input as possible, and express the relation
 
                 current_depth = current_depth[token]
 
-        # TODO: DEBUG
-        if True:
-            def get_all_keys(d):
+        # DEBUG
+        if False:
+            def get_all_keys(d, tab):
                 for key, value in d.items():
-                    yield key
+                    yield key, tab
                     if isinstance(value, dict):
-                        yield from get_all_keys(value)
+                        yield from get_all_keys(value, tab + "  ")
 
             print("TS-------------")
-            for x in get_all_keys(self.ts_tree):
-                print(self.tokenizer.decode(x))
+            for x, tab in get_all_keys(self.ts_tree, ""):
+                print(tab + self.tokenizer.decode(x))
 
             print("R--------------")
-            for x in get_all_keys(self.r_tree):
-                print(self.tokenizer.decode(x))
+            for x, tab in get_all_keys(self.r_tree, ""):
+                print(tab + self.tokenizer.decode(x))
 
 
 
@@ -369,8 +378,9 @@ Extract as much information from the Input as possible, and express the relation
                     "",  # output - leave this blank for generation!
                 )
             ], return_tensors="pt").to("cuda")
-        print(f"Phase 1 texchnk \"{text[:50]}...{text[-10:]}\"")
-        print(f"Phase 1 context \"{context_str[:50]}...{context_str[-10:]}\"")
+
+        print(f"Phase 1 text chunk \"{text[:50]}...{text[-20:]}\"")
+        print(f"Phase 1 context \"{context_str[:30]}...{context_str[-20:]}\"")
         # print(self.prompt.format(
         #             context_str,
         #             text,  # input
@@ -378,6 +388,7 @@ Extract as much information from the Input as possible, and express the relation
         #         ))
         print("---")
 
+        print("Phase 1 model start")
         outputs = self.model.generate(
             **inputs,
 
@@ -399,7 +410,7 @@ Extract as much information from the Input as possible, and express the relation
         response = response[0].replace('\n', '')
         rdf_string = response.split("### Response:")[1]
 
-        print(f"Phase 2 modl out")
+        print(f"Phase 2 model generation done")
         # print(rdf_string)
         # convert rdf string to list
         rdfs = []
@@ -423,7 +434,7 @@ Extract as much information from the Input as possible, and express the relation
             except Exception as e:
                 print(f"NON-STANDARD TRIPLE {_triple} ({e})")
                 continue
-        print("Phase 3 pars done")
+        print("Phase 3 parsing done")
         print("chunk DONE")
 
         return rdfs
