@@ -106,7 +106,7 @@ class TRSLogits(LogitsProcessor):
             print("jjifdoasjddio not supposed to happen arghh!")
             raise Exception
 
-        banned_tokens += [self.pad_token, self.sot_token, self.eot_token]
+        banned_tokens.append([self.pad_token, self.sot_token, self.eot_token])
 
         disabled_scores = disable_tokens(scores, banned_tokens)
         # print(input_ids)
@@ -200,7 +200,7 @@ def draw_graph(triples):
 class GraphGen:
     prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
 ### Instruction:
-Extract the most confident information in the sentence below as much as possible, and express the relationships in RDF Triples that complement the existing RDF triples. Do not use information from common sense.
+Extract as much information from the Input as possible, and express the relationships in RDF Triples that compliment the existing RDF triples created from previous text. Do not use information from common sense. Expressed information must be confidently present in the text.
 ### Existing RDF triples:
 {}
 ### Input:
