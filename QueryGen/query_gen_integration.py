@@ -40,15 +40,16 @@ class SPARQLLogits(LogitsProcessor):
     def __init__(self, _tokenizer, t_s_tree, r_tree):
         self.tokenizer = _tokenizer
 
-        self.query_start_token = _tokenizer("{")['input_ids'][1]   # { ...
-        self.query_end_token = _tokenizer("}")['input_ids'][1]     # }<eos>
-        self.eos_token = _tokenizer("<eos>")['input_ids'][1]       # }<eos>
+        self.eos_token = _tokenizer("<eos>")['input_ids'][1]                # <eos>
 
-        self.variable_token = _tokenizer('?')['input_ids'][1]      # ?uri
-        self.keyword_start_token = _tokenizer('<')['input_ids'][1] # <subject...
-        self.keyword_end_token = _tokenizer('>')['input_ids'][1]   # ...subject>
+        self.keyword_start_token = _tokenizer("<unused10>")['input_ids'][1] # <
+        self.keyword_end_token = _tokenizer("<unused11>")['input_ids'][1]   # >
 
-        self.seperator_token = _tokenizer('.')['input_ids'][1]     # ...<object> . ?uri...
+        self.query_start_token = _tokenizer("<unused12>")['input_ids'][1]   # {
+        self.query_end_token = _tokenizer("<unused13>")['input_ids'][1]     # }
+
+        self.variable_token = _tokenizer("<unused14>")['input_ids'][1]      # ?
+        self.seperator_token = _tokenizer("<unused15>")['input_ids'][1]     # .
 
         self.t_s_tree = t_s_tree
         self.r_tree = r_tree
@@ -58,18 +59,22 @@ class SPARQLLogits(LogitsProcessor):
         # get the closest token of interest
         ids_list = input_ids.tolist()[0]
         # print(ids_list)
+        print("A")
 
         # ... }
         if find_largest_index(ids_list, self.query_end_token) != -1:
             # end
+            print("END")
             allowed_tokens = [self.eos_token]
             return only_allow_tokens(scores, allowed_tokens)
 
         # SELECT ... {
         if find_largest_index(ids_list, self.query_start_token) == -1:
             # not started yet
+            print("NOT STARTED")
             return scores
 
+        print("CONTENT")
         sep_near_pos = find_largest_index(ids_list, self.seperator_token) # .
         var_near_pos = find_largest_index(ids_list, self.variable_token) # ?
         key_start_near_pos = find_largest_index(ids_list, self.keyword_start_token) # <
@@ -82,6 +87,8 @@ class SPARQLLogits(LogitsProcessor):
 
         triple_index = get_triple_index(ids_list, self.seperator_token, self.keyword_end_token, self.variable_token)
 
+        print(near_pos)
+
         # New special token enforce
         if near_pos == sep_near_pos: # .
             allowed_tokens += [self.query_end_token, self.keyword_start_token, self.variable_token]
@@ -92,7 +99,6 @@ class SPARQLLogits(LogitsProcessor):
             else:
                 disabled_tokens += [self.keyword_end_token, self.seperator_token, self.query_end_token] # content, <, ? allowed
 
-
         elif near_pos == key_start_near_pos: # <
 
             generated = ids_list[(near_pos + 1):]  # All currently generated keywords
@@ -101,10 +107,12 @@ class SPARQLLogits(LogitsProcessor):
             if triple_index == 0 or triple_index == 2:
                 # TS
                 allowed_tokens += get_probable_tokens_in_tree(self.t_s_tree, generated)
-
             else:
                 # R
                 allowed_tokens += get_probable_tokens_in_tree(self.r_tree, generated)
+
+            print(f"[CURRENT] {self.tokenizer.decode(generated)}...")
+            print(f"[ALLOW->] {self.tokenizer.decode(allowed_tokens)}...")
 
         elif near_pos == key_end_near_pos: # >
             allowed_tokens += [self.seperator_token, self.query_end_token]
@@ -175,7 +183,7 @@ The user has provided a question. Convert the question in Natural Language to a 
             )]
 
         # ts map
-        ts_end_tokens = self.tokenizer(">")['input_ids'][1:]
+        ts_end_tokens = self.tokenizer("<unused11>")['input_ids'][1:] # >
 
         for tokens in new_ts_tokens:
             tokens += ts_end_tokens
@@ -190,7 +198,7 @@ The user has provided a question. Convert the question in Natural Language to a 
                 current_depth = current_depth[token]
 
         # r map
-        r_end_tokens = self.tokenizer(">")['input_ids'][1:]
+        r_end_tokens = self.tokenizer("<unused11>")['input_ids'][1:] # >
 
         for tokens in new_r_tokens:
             tokens += r_end_tokens
@@ -299,5 +307,19 @@ The user has provided a question. Convert the question in Natural Language to a 
         response = response[0].replace('\n', '')
         sparql_string = response.split("### SPARQL:")[1]
         sparql_string = sparql_string.removeprefix("<bos>").removesuffix("<eos>")
+
+        # Convert special tokens back to original
+
+        token_table = {
+            "<unused10>": "<",
+            "<unused11>": ">",
+            "<unused12>": "{",
+            "<unused13>": "}",
+            "<unused14>": "?",
+            "<unused15>": "."
+        }
+
+        for k, v in token_table.items():
+            sparql_string = sparql_string.replace(k, v)
 
         return sparql_string
