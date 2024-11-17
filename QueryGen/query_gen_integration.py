@@ -2,6 +2,7 @@ import math
 import os
 
 import torch
+from torch import Tensor
 from transformers import LogitsProcessorList, LogitsProcessor
 from unsloth import FastLanguageModel
 from collections import Counter
@@ -14,12 +15,20 @@ def disable_tokens(scores, banned_tokens):
         scores[0][token] = -math.inf
     return scores
 
-def only_allow_tokens(scores, allowed_tokens):
-    for score in len(scores[0]):
-        if score in allowed_tokens:
-            continue
-        scores[0][score] = -math.inf
-    return scores
+def only_allow_tokens(scores, allowed_tokens) -> torch.Tensor:
+    # Faster method
+    new_scores = torch.tensor([[-math.inf] * len(scores[0])], dtype=torch.float16, device='cuda')
+
+    # print(f"S{scores.shape}")
+    # print(f"M{new_scores.shape}")
+    # print(new_scores)
+
+    # print(allowed_tokens)
+
+    for token in allowed_tokens:
+        new_scores[0][token] = scores[0][token]
+
+    return new_scores
 
 def find_largest_index(lst: list, value):
     try:
@@ -27,9 +36,12 @@ def find_largest_index(lst: list, value):
     except:
         return -1  # not found
 
-def get_triple_index(ids: list, sep_token_idx, keyword_end_token, var_token):
-    count = Counter(ids[sep_token_idx:])
-    return count[keyword_end_token] + count[var_token]
+def get_triple_index(ids: list, sep_token, keyword_start_token, var_token):
+    start_pos = find_largest_index(ids, sep_token) # .
+    if start_pos == -1:
+        start_pos = 0
+    count = Counter(ids[start_pos:])
+    return count[keyword_start_token] + count[var_token] - 1
 
 # Enforce structure, keywords
 class SPARQLLogits(LogitsProcessor):
@@ -41,6 +53,7 @@ class SPARQLLogits(LogitsProcessor):
         self.tokenizer = _tokenizer
 
         self.eos_token = _tokenizer("<eos>")['input_ids'][1]                # <eos>
+        self.pad_token = _tokenizer("<pad>")['input_ids'][1]                # <pad> DISABLE
 
         self.keyword_start_token = _tokenizer("<unused10>")['input_ids'][1] # <
         self.keyword_end_token = _tokenizer("<unused11>")['input_ids'][1]   # >
@@ -51,15 +64,17 @@ class SPARQLLogits(LogitsProcessor):
         self.variable_token = _tokenizer("<unused14>")['input_ids'][1]      # ?
         self.seperator_token = _tokenizer("<unused15>")['input_ids'][1]     # .
 
+        self.space_token = _tokenizer(' ')['input_ids'][1]                  # Just Space
+
         self.t_s_tree = t_s_tree
         self.r_tree = r_tree
 
 
-    def __call__(self, input_ids, scores) -> torch.FloatTensor:
+    def __call__(self, input_ids, scores) -> torch.Tensor:
         # get the closest token of interest
         ids_list = input_ids.tolist()[0]
         # print(ids_list)
-        print("A")
+        print(self.tokenizer.decode(ids_list).split("### SPARQL:")[1])
 
         # ... }
         if find_largest_index(ids_list, self.query_end_token) != -1:
@@ -82,12 +97,13 @@ class SPARQLLogits(LogitsProcessor):
 
         near_pos = max(var_near_pos, key_start_near_pos, key_end_near_pos, sep_near_pos)
 
-        disabled_tokens = [self.query_start_token]
+        disabled_tokens = [self.query_start_token, self.pad_token]
         allowed_tokens = []
 
-        triple_index = get_triple_index(ids_list, self.seperator_token, self.keyword_end_token, self.variable_token)
+        content = ids_list[(find_largest_index(ids_list, self.query_start_token) + 1):]
 
-        print(near_pos)
+        triple_index = get_triple_index(content, self.seperator_token, self.keyword_start_token, self.variable_token)
+
 
         # New special token enforce
         if near_pos == sep_near_pos: # .
@@ -95,9 +111,11 @@ class SPARQLLogits(LogitsProcessor):
 
         elif near_pos == var_near_pos: # ?
             if triple_index == 2: # object
-                disabled_tokens += [self.variable_token, self.keyword_start_token, self.keyword_end_token] # content, ., } allowed
+                allowed_tokens += [self.seperator_token, self.query_end_token] # content, ., } allowed
             else:
-                disabled_tokens += [self.keyword_end_token, self.seperator_token, self.query_end_token] # content, <, ? allowed
+                allowed_tokens += [self.variable_token, self.keyword_start_token] # content, ?, < allowed
+
+            allowed_tokens += [self.space_token] # Should've removed spaces when training. This might cause problems or improve things, who knows
 
         elif near_pos == key_start_near_pos: # <
 
@@ -111,27 +129,35 @@ class SPARQLLogits(LogitsProcessor):
                 # R
                 allowed_tokens += get_probable_tokens_in_tree(self.r_tree, generated)
 
-            print(f"[CURRENT] {self.tokenizer.decode(generated)}...")
-            print(f"[ALLOW->] {self.tokenizer.decode(allowed_tokens)}...")
+            print(f"[CURRENT] {self.tokenizer.decode(generated)}")
+            print(f"[ALLOW->] {self.tokenizer.decode(allowed_tokens)}")
 
         elif near_pos == key_end_near_pos: # >
-            allowed_tokens += [self.seperator_token, self.query_end_token]
+            if triple_index == 2: # object
+                allowed_tokens += [self.seperator_token, self.query_end_token]
+            else:
+                disabled_tokens += [self.seperator_token, self.query_end_token]
 
         else:
             print("jjifdoasjddio not supposed to happen arghh!")
             raise Exception
 
+        print(triple_index)
+
         if near_pos == len(ids_list) - 1:
-            # Just generated start token
+            # Just generated special token
             if near_pos == sep_near_pos: # .
-                allowed_tokens += [self.query_end_token, self.keyword_start_token, self.variable_token]
+                allowed_tokens += [self.query_end_token, self.keyword_start_token, self.variable_token, self.space_token]
             elif near_pos == var_near_pos:  # ?
-                disabled_tokens += [self.eos_token, self.keyword_start_token, self.keyword_end_token,
-                                   self.variable_token,
-                                   self.seperator_token] # stop all tokens
+                disabled_tokens += [self.query_end_token, self.eos_token,
+                                    self.keyword_start_token, self.keyword_end_token,
+                                    self.variable_token,
+                                    self.seperator_token,
+                                    self.space_token] # stop all tokens
             elif near_pos == key_start_near_pos: # <
                 disabled_tokens += [self.keyword_start_token, self.keyword_end_token, self.query_end_token, self.seperator_token, self.eos_token]
             elif near_pos == key_end_near_pos: # >
+                allowed_tokens += [self.space_token]
                 disabled_tokens += [self.keyword_end_token]
             else:
                 print("jjifdoasjddio not supposed to happen too arghh!")
@@ -153,7 +179,6 @@ The user has provided a question. Convert the question in Natural Language to a 
 {}
 ### SPARQL:
 {}"""
-
 
     def __init__(self, existing_rdfs: list[Triple]): # Keyword is enforced
         # init tokenizer, models, etc.
@@ -231,7 +256,7 @@ The user has provided a question. Convert the question in Natural Language to a 
     def setup_model(self):
         # setup model helper function
         self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-            model_name=os.path.join(os.path.dirname(__file__),"query_2b_600step"),
+            model_name=os.path.join(os.path.dirname(__file__),"query_2b_treefix_2000step"),
             max_seq_length=2048,
             dtype=None,
             load_in_4bit=True,
@@ -258,15 +283,14 @@ The user has provided a question. Convert the question in Natural Language to a 
 
     def generate(self, input_text):
         # SPARQL Gen
-
-
         inputs = self.tokenizer(
             [
                 self.prompt.format(
                     input_text,  # input
                     "",  # output - leave this blank for generation!
                 )
-            ], return_tensors="pt").to("cuda")
+            ], return_tensors="pt"
+        ).to("cuda")
 
         if len(self.ts_tree) > 0 and len(self.r_tree) > 0:
             outputs = self.model.generate(
@@ -286,7 +310,6 @@ The user has provided a question. Convert the question in Natural Language to a 
                 # Use cache = false is broken haha, but beam search is broken when not using cache hahahah ;-;
             )
         else:
-            print(self.ts_tree, self.r_tree)
             print("No existing RDFs, reverting to default gen without SPARQLLogits")
             outputs = self.model.generate(
                 **inputs,

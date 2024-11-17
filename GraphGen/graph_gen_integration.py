@@ -377,7 +377,8 @@ Extract as much information from the Input as possible, and express the relation
                     text,  # input
                     "",  # output - leave this blank for generation!
                 )
-            ], return_tensors="pt").to("cuda")
+            ], return_tensors="pt"
+        ).to("cuda")
 
         print(f"Phase 1 text chunk \"{text[:50]}...{text[-20:]}\"")
         print(f"Phase 1 context \"{context_str[:30]}...{context_str[-20:]}\"")
