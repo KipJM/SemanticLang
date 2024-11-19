@@ -111,11 +111,12 @@ class SPARQLLogits(LogitsProcessor):
         elif near_pos == var_near_pos: # ?
             if triple_index == 2: # object
                 # TODO: CHANGE TO DISABLED SINCE ALLOWED DISABLES EVERYTHING ELSE AHAHAHAH
-                allowed_tokens += [self.seperator_token, self.query_end_token] # content, ., } allowed
+                disabled_tokens += [self.keyword_start_token, self.keyword_end_token, self.variable_token, self.query_end_token] # content, ., } allowed
             else:
-                allowed_tokens += [self.variable_token, self.keyword_start_token] # content, ?, < allowed
+                disabled_tokens += [self.seperator_token, self.keyword_end_token, self.query_end_token] # content, ?, < allowed
 
-            allowed_tokens += [self.space_token] # Should've removed spaces when training. This might cause problems or improve things, who knows
+            # Okay I was right this fucked things up oops
+            # allowed_tokens += [self.space_token] # Should've removed spaces when training. This might cause problems or improve things, who knows
 
         elif near_pos == key_start_near_pos: # <
 
