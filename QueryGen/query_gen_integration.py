@@ -83,7 +83,7 @@ class SPARQLLogits(LogitsProcessor):
             return scores
 
         # {
-        if find_largest_index(ids_list, self.query_start_token) != -1:
+        if find_largest_index(ids_list, self.query_start_token) == -1:
             # not started yet
             print("NOT SUPPOSED TO HAPPEN OOPS")
             return scores
@@ -110,6 +110,7 @@ class SPARQLLogits(LogitsProcessor):
 
         elif near_pos == var_near_pos: # ?
             if triple_index == 2: # object
+                # TODO: CHANGE TO DISABLED SINCE ALLOWED DISABLES EVERYTHING ELSE AHAHAHAH
                 allowed_tokens += [self.seperator_token, self.query_end_token] # content, ., } allowed
             else:
                 allowed_tokens += [self.variable_token, self.keyword_start_token] # content, ?, < allowed
