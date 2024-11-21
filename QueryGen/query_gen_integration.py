@@ -76,17 +76,16 @@ class SPARQLLogits(LogitsProcessor):
         # print(ids_list)
         print(self.tokenizer.decode(ids_list).split("### SPARQL:")[1])
 
-        # ... }
+        # ... } SELECT
         if find_largest_index(ids_list, self.query_end_token) != -1:
-            # end
+            # Model can freely generate whatever
             print("END")
-            allowed_tokens = [self.eos_token]
-            return only_allow_tokens(scores, allowed_tokens)
+            return scores
 
-        # SELECT ... {
+        # {
         if find_largest_index(ids_list, self.query_start_token) == -1:
             # not started yet
-            print("NOT STARTED")
+            print("NOT SUPPOSED TO HAPPEN OOPS")
             return scores
 
         print("CONTENT")
@@ -97,7 +96,7 @@ class SPARQLLogits(LogitsProcessor):
 
         near_pos = max(var_near_pos, key_start_near_pos, key_end_near_pos, sep_near_pos)
 
-        disabled_tokens = [self.query_start_token, self.pad_token]
+        disabled_tokens = [self.query_start_token, self.pad_token, self.eos_token]
         allowed_tokens = []
 
         content = ids_list[(find_largest_index(ids_list, self.query_start_token) + 1):]
@@ -111,11 +110,13 @@ class SPARQLLogits(LogitsProcessor):
 
         elif near_pos == var_near_pos: # ?
             if triple_index == 2: # object
-                allowed_tokens += [self.seperator_token, self.query_end_token] # content, ., } allowed
+                # TODO: CHANGE TO DISABLED SINCE ALLOWED DISABLES EVERYTHING ELSE AHAHAHAH
+                disabled_tokens += [self.keyword_start_token, self.keyword_end_token, self.variable_token, self.query_end_token] # content, ., } allowed
             else:
-                allowed_tokens += [self.variable_token, self.keyword_start_token] # content, ?, < allowed
+                disabled_tokens += [self.seperator_token, self.keyword_end_token, self.query_end_token] # content, ?, < allowed
 
-            allowed_tokens += [self.space_token] # Should've removed spaces when training. This might cause problems or improve things, who knows
+            # Okay I was right this fucked things up oops
+            # allowed_tokens += [self.space_token] # Should've removed spaces when training. This might cause problems or improve things, who knows
 
         elif near_pos == key_start_near_pos: # <
 
@@ -178,7 +179,7 @@ The user has provided a question. Convert the question in Natural Language to a 
 ### User Question:
 {}
 ### SPARQL:
-{}"""
+<unused12>{}"""
 
     def __init__(self, existing_rdfs: list[Triple]): # Keyword is enforced
         # init tokenizer, models, etc.
@@ -256,7 +257,7 @@ The user has provided a question. Convert the question in Natural Language to a 
     def setup_model(self):
         # setup model helper function
         self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-            model_name=os.path.join(os.path.dirname(__file__),"query_2b_treefix_2000step"),
+            model_name=os.path.join(os.path.dirname(__file__),"query_9b_4epoch"),
             max_seq_length=2048,
             dtype=None,
             load_in_4bit=True,
@@ -344,5 +345,10 @@ The user has provided a question. Convert the question in Natural Language to a 
 
         for k, v in token_table.items():
             sparql_string = sparql_string.replace(k, v)
+
+        if len(sparql_string.split("}")) != 2:
+            print("AHAHHAHAHA noooooo")
+
+        sparql_string = sparql_string.split("}")[1] + sparql_string.split("}")[0] + "}"
 
         return sparql_string
